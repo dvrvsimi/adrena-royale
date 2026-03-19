@@ -1,0 +1,354 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOURNAMENTS
+// ═══════════════════════════════════════════════════════════════════════
+
+model Tournament {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  status            TournamentStatus @default(SCHEDULED)
+
+  // Entry configuration
+  entryType         EntryType @default(FREE)
+  entryFeeSol       Float?    // If SOL_STAKE
+  entryFeeMutagen   Int?      // If MUTAGEN_COMMIT
+
+  // Timing
+  scheduledStart    DateTime
+  entryDeadline     DateTime
+  actualStart       DateTime?
+  actualEnd         DateTime?
+
+  // Rounds configuration (JSON for flexibility)
+  // Format: [{ duration: 360, eliminationPercent: 0.25 }, ...]
+  roundConfigs      Json      @default("[]")
+  currentRound      Int       @default(0)
+
+  // Participant limits
+  minParticipants   Int       @default(20)
+  maxParticipants   Int       @default(256)
+
+  // Scoring config
+  minNotionalSize   Float     @default(100)
+  snipePenaltyMins  Int       @default(5)
+
+  // Relations
+  participants      Participant[]
+  rounds            Round[]
+  whitelist         Whitelist[]
+
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
+  @@index([scheduledStart])
+}
+
+enum TournamentStatus {
+  SCHEDULED
+  ENTRY_OPEN
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum EntryType {
+  FREE              // Just register wallet
+  WHITELIST         // Must be on whitelist
+  SOL_STAKE         // Send SOL to treasury
+  MUTAGEN_COMMIT    // Have minimum Mutagen balance
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PARTICIPANTS
+// ═══════════════════════════════════════════════════════════════════════
+
+model Participant {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  wallet          String
+
+  // Entry details
+  entryTxHash     String?     // SOL stake transaction
+  mutagenCommit   Int?        // Mutagen amount committed
+  enteredAt       DateTime    @default(now())
+
+  // Status
+  isEliminated    Boolean     @default(false)
+  eliminatedAt    Int?        // Round number
+  eliminationReason EliminationReason?
+  finalRank       Int?
+
+  // Power-ups (calculated from streaks)
+  shields         Int         @default(0)
+
+  // Relations
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  roundScores     RoundScore[]
+
+  @@unique([tournamentId, wallet])
+  @@index([wallet])
+  @@index([tournamentId, isEliminated])
+}
+
+enum EliminationReason {
+  SCORE           // Bottom percentile
+  INACTIVE        // No trades in round
+  DISQUALIFIED    // Manual DQ
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ROUNDS
+// ═══════════════════════════════════════════════════════════════════════
+
+model Round {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  roundNumber     Int
+
+  // Timing
+  startTime       DateTime?
+  endTime         DateTime?
+  durationMins    Int
+
+  // Status
+  phase           RoundPhase  @default(PENDING)
+
+  // Results
+  participantsAtStart Int?
+  eliminationTarget   Int?
+  actualEliminations  Int?
+
+  // Relations
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  scores          RoundScore[]
+
+  @@unique([tournamentId, roundNumber])
+}
+
+enum RoundPhase {
+  PENDING
+  ACTIVE
+  SCORING
+  ELIMINATING
+  COMPLETE
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ROUND SCORES
+// ═══════════════════════════════════════════════════════════════════════
+
+model RoundScore {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  roundNumber     Int
+  participantId   String
+  wallet          String
+
+  // Scores
+  rawScore        Float       @default(0)
+  finalScore      Float       @default(0)
+
+  // Stats
+  tradesCount     Int         @default(0)
+  totalVolume     Float       @default(0)
+  totalPnl        Float       @default(0)
+
+  // Ranking
+  rank            Int?
+  previousRank    Int?        // Rank from previous round (for comeback tracking)
+
+  // Outcome
+  isEliminated    Boolean     @default(false)
+  usedShield      Boolean     @default(false)
+
+  // Trade details (JSON array of individual trade scores)
+  trades          Json        @default("[]")
+
+  // Relations
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  round           Round       @relation(fields: [tournamentId, roundNumber], references: [tournamentId, roundNumber], onDelete: Cascade)
+
+  @@unique([tournamentId, roundNumber, wallet])
+  @@index([tournamentId, roundNumber, finalScore(sort: Desc)])
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STREAKS (Self-Tracked)
+// ═══════════════════════════════════════════════════════════════════════
+
+model UserStreak {
+  id                  String    @id @default(cuid())
+  wallet              String    @unique
+
+  currentDailyStreak  Int       @default(0)
+  longestDailyStreak  Int       @default(0)
+  lastTradeDate       DateTime?
+
+  // Calculated shields
+  shieldsEarned       Int       @default(0)
+
+  updatedAt           DateTime  @updatedAt
+
+  @@index([wallet])
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BADGES
+// ═══════════════════════════════════════════════════════════════════════
+
+model Badge {
+  id              String      @id @default(cuid())
+  badgeType       String      // 'royale_champion', 'survivor_10', etc.
+  wallet          String
+
+  // Context
+  tournamentId    String?     // If earned in specific tournament
+  awardedAt       DateTime    @default(now())
+
+  // NFT upgrade (future)
+  nftMint         String?
+
+  @@unique([badgeType, wallet])
+  @@index([wallet])
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SOL ENTRY TRACKING
+// ═══════════════════════════════════════════════════════════════════════
+
+model EntryPayment {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  wallet          String
+
+  txHash          String      @unique
+  amount          Float       // SOL amount
+  status          PaymentStatus @default(PENDING)
+
+  processedAt     DateTime?
+  createdAt       DateTime    @default(now())
+
+  @@index([tournamentId, wallet])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+  FAILED
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// WHITELIST
+// ═══════════════════════════════════════════════════════════════════════
+
+model Whitelist {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  wallet          String
+  addedAt         DateTime    @default(now())
+  addedBy         String      // Admin wallet who added
+
+  // Relations
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, wallet])
+  @@index([tournamentId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADMIN AUDIT LOG
+// ═══════════════════════════════════════════════════════════════════════
+
+model AdminAction {
+  id          String    @id @default(cuid())
+  adminWallet String
+  action      String
+  targetType  String?   // 'tournament', 'participant'
+  targetId    String?
+  details     Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminWallet])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRIZE PAYOUTS
+// ═══════════════════════════════════════════════════════════════════════
+
+model PrizePayout {
+  id              String        @id @default(cuid())
+  tournamentId    String
+  wallet          String
+
+  // Prize details
+  placement       Int           // 1 = first place, 2 = second, etc.
+  prizeType       PrizeType     @default(PLACEMENT)
+  amountSol       Float         // SOL amount
+  percentOfPool   Float         // e.g., 0.30 = 30%
+
+  // Transaction tracking
+  status          PayoutStatus  @default(PENDING)
+  txHash          String?       @unique
+  processedAt     DateTime?
+  errorMessage    String?
+
+  createdAt       DateTime      @default(now())
+
+  @@index([tournamentId])
+  @@index([wallet])
+  @@index([status])
+}
+
+enum PrizeType {
+  PLACEMENT       // Standard placement prize
+  RAFFLE          // Consolation raffle
+}
+
+enum PayoutStatus {
+  PENDING         // Not yet processed
+  PROCESSING      // Transaction in flight
+  COMPLETED       // Successfully sent
+  FAILED          // Transaction failed
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOURNAMENT PRIZE POOL
+// ═══════════════════════════════════════════════════════════════════════
+
+model TournamentPrizePool {
+  id              String    @id @default(cuid())
+  tournamentId    String    @unique
+
+  // Pool breakdown
+  totalSolCollected  Float      @default(0)  // Total from entry fees
+  totalPrizePool     Float      @default(0)  // After platform fee
+  platformFeeSol     Float      @default(0)  // Platform cut (e.g., 5%)
+
+  // Distribution tracking
+  distributedSol     Float      @default(0)
+  refundedSol        Float      @default(0)
+
+  // Status
+  isFinalized        Boolean    @default(false)
+  finalizedAt        DateTime?
+
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([tournamentId])
+}

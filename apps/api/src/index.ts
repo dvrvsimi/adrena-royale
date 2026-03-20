@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
-import { env } from './config/env';
+import { env, isProduction } from './config/env';
 import routes from './routes';
 import { processActiveRounds } from './jobs/roundProcessor';
 import { updateAllStreaks } from './jobs/streakUpdater';
@@ -11,7 +11,10 @@ import { initStandingsWebSocket, shutdownStandingsWebSocket } from './services/s
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: isProduction ? env.CORS_ORIGIN?.split(',') : '*',
+  credentials: true,
+}));
 app.use(express.json());
 
 // Routes

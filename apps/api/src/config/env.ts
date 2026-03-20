@@ -27,6 +27,9 @@ const envSchema = z.object({
   // Server
   PORT: z.string().transform(Number).default('3001'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+  // CORS (comma-separated origins for production)
+  CORS_ORIGIN: z.string().optional(),
 });
 
 function loadEnv() {

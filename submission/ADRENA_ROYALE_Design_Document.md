@@ -11,7 +11,7 @@
 | **Prepared for** | Adrena Protocol & Superteam Bounty |
 | **Version** | 1.0 Final Submission |
 | **Date** | March 2026 |
-| **Author** | [Your Name/Team] |
+| **Author** | dvrvsimi |
 
 ---
 

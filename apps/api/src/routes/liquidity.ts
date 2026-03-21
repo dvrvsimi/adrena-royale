@@ -14,8 +14,16 @@ router.get('/', async (req, res) => {
     res.json({
       data: liquidityInfo,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get liquidity info error:', error);
+
+    // Check if it's an API suspension or unavailability
+    const errorMessage = error?.message?.toLowerCase() || '';
+    if (errorMessage.includes('suspended') || errorMessage.includes('503') || errorMessage.includes('unavailable')) {
+      res.status(503).json({ error: 'Adrena Data API is currently unavailable (service suspended or down)' });
+      return;
+    }
+
     res.status(500).json({ error: 'Failed to fetch liquidity info' });
   }
 });

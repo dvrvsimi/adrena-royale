@@ -115,6 +115,16 @@ async function fetchDataApi<T>(
     throw new Error(`Data API error: ${response.status} ${response.statusText}`);
   }
 
+  // Check content-type to detect HTML error pages
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('text/html')) {
+    const text = await response.text();
+    if (text.toLowerCase().includes('suspended')) {
+      throw new Error('Adrena Data API service has been suspended');
+    }
+    throw new Error('Adrena Data API returned unexpected HTML response');
+  }
+
   return response.json() as Promise<T>;
 }
 

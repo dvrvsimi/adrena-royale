@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTournament } from '@/hooks/useTournament';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useSignMessage } from '@/hooks/useSignMessage';
@@ -16,14 +17,20 @@ export default function TournamentPage({
 }: {
   params: { id: string };
 }) {
+  const router = useRouter();
   const { tournament, isLoading, error, refresh } = useTournament(params.id);
   const { publicKey } = useWallet();
   const { signAuthMessage } = useSignMessage();
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminMessage, setAdminMessage] = useState<string | null>(null);
 
-  const handleAdminAction = async (action: 'open' | 'start') => {
+  const handleAdminAction = async (action: 'open' | 'start' | 'delete') => {
     if (!publicKey) return;
+
+    if (action === 'delete' && !confirm('Are you sure you want to delete this tournament?')) {
+      return;
+    }
+
     setAdminLoading(true);
     setAdminMessage(null);
     try {
@@ -36,6 +43,10 @@ export default function TournamentPage({
       } else if (action === 'start') {
         await api.startTournament(params.id, auth);
         setAdminMessage('Tournament started!');
+      } else if (action === 'delete') {
+        await api.deleteTournament(params.id, auth);
+        router.push('/');
+        return;
       }
       refresh();
     } catch (err: any) {
@@ -95,6 +106,13 @@ export default function TournamentPage({
                 {adminLoading ? 'Loading...' : 'Start Tournament'}
               </button>
             )}
+            <button
+              onClick={() => handleAdminAction('delete')}
+              disabled={adminLoading}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              {adminLoading ? 'Loading...' : 'Delete Tournament'}
+            </button>
           </div>
           {adminMessage && (
             <p className={`mt-2 text-sm ${adminMessage.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>

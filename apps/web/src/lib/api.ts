@@ -140,6 +140,14 @@ export const api = {
     });
   },
 
+  deleteTournament: async (id: string, auth?: AuthData) => {
+    return fetchApi<{ message: string }>(`/admin/tournaments/${id}`, {
+      method: 'DELETE',
+      auth,
+      devWallet: auth?.wallet || 'DevAdmin123456789012345678901234567890',
+    });
+  },
+
   // Liquidity
   getLiquidityInfo: async () => {
     return fetchApi<{ data: LiquidityInfo }>('/liquidity');

@@ -262,6 +262,41 @@ router.post('/tournaments/:id/cancel', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
+// DELETE /api/admin/tournaments/:id - Delete tournament
+// ─────────────────────────────────────────────────────────────────────
+
+router.delete('/tournaments/:id', async (req, res) => {
+  try {
+    // Delete related records first (cascade)
+    await prisma.roundScore.deleteMany({ where: { round: { tournamentId: req.params.id } } });
+    await prisma.round.deleteMany({ where: { tournamentId: req.params.id } });
+    await prisma.participant.deleteMany({ where: { tournamentId: req.params.id } });
+    await prisma.whitelist.deleteMany({ where: { tournamentId: req.params.id } });
+    await prisma.prizePayout.deleteMany({ where: { tournamentId: req.params.id } });
+    await prisma.tournamentPrizePool.deleteMany({ where: { tournamentId: req.params.id } });
+    await prisma.entryPayment.deleteMany({ where: { tournamentId: req.params.id } });
+
+    const tournament = await prisma.tournament.delete({
+      where: { id: req.params.id }
+    });
+
+    await prisma.adminAction.create({
+      data: {
+        adminWallet: req.wallet!,
+        action: 'DELETE_TOURNAMENT',
+        targetType: 'tournament',
+        targetId: req.params.id
+      }
+    });
+
+    res.json({ message: 'Tournament deleted', tournament });
+  } catch (error) {
+    console.error('Delete tournament error:', error);
+    res.status(500).json({ error: 'Failed to delete tournament' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────
 // POST /api/admin/tournaments/:id/disqualify - Disqualify participant
 // ─────────────────────────────────────────────────────────────────────
 

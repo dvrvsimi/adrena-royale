@@ -28,7 +28,7 @@ const createTournamentSchema = z.object({
     duration: z.number().int().positive(),
     eliminationPercent: z.number().min(0).max(1)
   })),
-  minParticipants: z.number().int().positive().default(20),
+  minParticipants: z.number().int().positive().default(5),
   maxParticipants: z.number().int().positive().default(256),
   minNotionalSize: z.number().positive().default(100),
   snipePenaltyMins: z.number().int().positive().default(5)

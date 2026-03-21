@@ -27,7 +27,7 @@ export default function RootLayout({
             </main>
             <footer className="border-t border-gray-800 py-6">
               <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-                Adrena Royale &copy; 2024. Built on{' '}
+                Adrena Royale &copy; 2026. Built on{' '}
                 <a
                   href="https://adrena.xyz"
                   target="_blank"

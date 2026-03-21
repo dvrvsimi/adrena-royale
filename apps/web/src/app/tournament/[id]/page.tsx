@@ -1,20 +1,49 @@
 'use client';
 
+import { useState } from 'react';
 import { useTournament } from '@/hooks/useTournament';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useSignMessage } from '@/hooks/useSignMessage';
 import { TournamentHeader } from '@/components/TournamentHeader';
 import { StandingsTable } from '@/components/StandingsTable';
 import { RegistrationForm } from '@/components/RegistrationForm';
 import { ParticipantStatus } from '@/components/ParticipantStatus';
 import { LiquidityWidget } from '@/components/LiquidityWidget';
+import { api } from '@/lib/api';
 
 export default function TournamentPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const { tournament, isLoading, error } = useTournament(params.id);
+  const { tournament, isLoading, error, refresh } = useTournament(params.id);
   const { publicKey } = useWallet();
+  const { signAuthMessage } = useSignMessage();
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminMessage, setAdminMessage] = useState<string | null>(null);
+
+  const handleAdminAction = async (action: 'open' | 'start') => {
+    if (!publicKey) return;
+    setAdminLoading(true);
+    setAdminMessage(null);
+    try {
+      const auth = await signAuthMessage();
+      if (!auth) throw new Error('Failed to sign');
+
+      if (action === 'open') {
+        await api.openEntries(params.id, auth);
+        setAdminMessage('Entries opened!');
+      } else if (action === 'start') {
+        await api.startTournament(params.id, auth);
+        setAdminMessage('Tournament started!');
+      }
+      refresh();
+    } catch (err: any) {
+      setAdminMessage(`Error: ${err.message}`);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -42,6 +71,38 @@ export default function TournamentPage({
   return (
     <div className="space-y-8">
       <TournamentHeader tournament={tournament} />
+
+      {/* Admin Controls */}
+      {publicKey && (tournament.status === 'SCHEDULED' || tournament.status === 'ENTRY_OPEN') && (
+        <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+          <h3 className="text-yellow-400 font-semibold mb-3">Admin Controls</h3>
+          <div className="flex gap-3 flex-wrap">
+            {tournament.status === 'SCHEDULED' && (
+              <button
+                onClick={() => handleAdminAction('open')}
+                disabled={adminLoading}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+              >
+                {adminLoading ? 'Loading...' : 'Open Entries'}
+              </button>
+            )}
+            {tournament.status === 'ENTRY_OPEN' && (
+              <button
+                onClick={() => handleAdminAction('start')}
+                disabled={adminLoading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
+              >
+                {adminLoading ? 'Loading...' : 'Start Tournament'}
+              </button>
+            )}
+          </div>
+          {adminMessage && (
+            <p className={`mt-2 text-sm ${adminMessage.startsWith('Error') ? 'text-red-400' : 'text-green-400'}`}>
+              {adminMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">

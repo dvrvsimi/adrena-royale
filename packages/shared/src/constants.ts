@@ -154,11 +154,11 @@ export const DEFAULT_TOURNAMENT_CONFIG = {
 } as const;
 
 export const DEFAULT_ROUND_CONFIGS = [
-  { duration: 360, eliminationPercent: 0.25 },  // Round 1: 6h, 25% cut
-  { duration: 360, eliminationPercent: 0.25 },  // Round 2: 6h, 25% cut
-  { duration: 360, eliminationPercent: 0.33 },  // Round 3: 6h, 33% cut
-  { duration: 360, eliminationPercent: 0.50 },  // Round 4: 6h, 50% cut
-  { duration: 480, eliminationPercent: 0 }      // Finals: 8h, no elimination
+  { duration: 1, eliminationPercent: 0.25 },  // Round 1: 1min, 25% cut
+  { duration: 1, eliminationPercent: 0.25 },  // Round 2: 1min, 25% cut
+  { duration: 1, eliminationPercent: 0.33 },  // Round 3: 1min, 33% cut
+  { duration: 1, eliminationPercent: 0.50 },  // Round 4: 1min, 50% cut
+  { duration: 1, eliminationPercent: 0 }      // Finals: 1min, no elimination
 ] as const;
 
 // ═══════════════════════════════════════════════════════════════════════

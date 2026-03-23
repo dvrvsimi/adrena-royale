@@ -35,6 +35,12 @@ export function Navbar() {
               >
                 Admin
               </Link>
+              <Link
+                href="/docs"
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                Docs
+              </Link>
               {publicKey && (
                 <Link
                   href={`/profile/${publicKey.toBase58()}`}
@@ -85,6 +91,13 @@ export function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Admin
+              </Link>
+              <Link
+                href="/docs"
+                className="text-gray-400 hover:text-white transition-colors py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Docs
               </Link>
               {publicKey && (
                 <Link

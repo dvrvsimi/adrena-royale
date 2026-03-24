@@ -21,6 +21,8 @@ export default function AdminPage() {
     entryFeeSol: string;
     scheduledStart: string;
     entryDeadline: string;
+    minParticipants: string;
+    maxParticipants: string;
   }>({
     name: '',
     description: '',
@@ -28,6 +30,8 @@ export default function AdminPage() {
     entryFeeSol: '',
     scheduledStart: '',
     entryDeadline: '',
+    minParticipants: '5',
+    maxParticipants: '256',
   });
 
   // In dev mode, allow access without wallet
@@ -65,6 +69,8 @@ export default function AdminPage() {
           entryFeeSol: form.entryFeeSol ? parseFloat(form.entryFeeSol) : undefined,
           scheduledStart: new Date(form.scheduledStart).toISOString(),
           entryDeadline: new Date(form.entryDeadline).toISOString(),
+          minParticipants: parseInt(form.minParticipants) || 5,
+          maxParticipants: parseInt(form.maxParticipants) || 256,
           roundConfigs: [...DEFAULT_ROUND_CONFIGS],
         },
         auth
@@ -78,6 +84,8 @@ export default function AdminPage() {
         entryFeeSol: '',
         scheduledStart: '',
         entryDeadline: '',
+        minParticipants: '5',
+        maxParticipants: '256',
       });
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Failed to create tournament' });
@@ -156,6 +164,36 @@ export default function AdminPage() {
                 />
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">
+                Min Participants
+              </label>
+              <input
+                type="number"
+                min="2"
+                value={form.minParticipants}
+                onChange={(e) => setForm({ ...form, minParticipants: e.target.value })}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">
+                Max Participants
+              </label>
+              <input
+                type="number"
+                min="2"
+                value={form.maxParticipants}
+                onChange={(e) => setForm({ ...form, maxParticipants: e.target.value })}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

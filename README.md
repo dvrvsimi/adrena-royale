@@ -416,6 +416,7 @@ In bear markets, all traders may have negative scores. Eliminating "bottom 25% b
 
 - [Design Document](./submission/ADRENA_ROYALE_Design_Document.md) - Full product specification
 - [Technical Specification](./submission/ADRENA_ROYALE_Technical_Specification.md) - Implementation details
+- [Deployment Guide](./submission/DEPLOYMENT_GUIDE.md) - Local development setup and Render deployment
 
 ---
 

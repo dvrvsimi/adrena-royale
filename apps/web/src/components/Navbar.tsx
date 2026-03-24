@@ -13,15 +13,18 @@ export function Navbar() {
     <nav className="border-b border-gray-800/50 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-600 rounded-lg flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform">
-                AR
-              </div>
-              <span className="text-xl font-bold text-gradient hidden sm:block">
-                Adrena Royale
-              </span>
-            </Link>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-600 rounded-lg flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform">
+              AR
+            </div>
+            <span className="text-xl font-bold text-gradient hidden sm:block">
+              Adrena Royale
+            </span>
+          </Link>
+
+          {/* Right side: Nav links + Wallet */}
+          <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-6">
               <Link
                 href="/"
@@ -50,9 +53,7 @@ export function Navbar() {
                 </Link>
               )}
             </div>
-          </div>
 
-          <div className="flex items-center gap-4">
             <WalletMultiButton className="!bg-primary-600 hover:!bg-primary-700 !rounded-lg !h-10 !px-4" />
 
             {/* Mobile menu button */}

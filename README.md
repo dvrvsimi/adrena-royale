@@ -412,23 +412,36 @@ In bear markets, all traders may have negative scores. Eliminating "bottom 25% b
 
 ---
 
+## Testing & Validation
+
+The tournament engine has been validated through lifecycle tests and backtesting:
+
+### Lifecycle Validation
+- **3 completed tournaments** on production (5 rounds each)
+- State machine verified: SCHEDULED → ENTRY_OPEN → ACTIVE → COMPLETED
+- Elimination logic correct at 25%/25%/33%/50%/0% per round
+
+### Backtest Results (10 wallets, 90 days)
+
+| Metric | Value |
+|--------|-------|
+| Score Range | -0.0842 to +0.1829 |
+| Size Multiplier Range | 0.63x – 10.27x |
+| Duration Penalties | 23% of trades (<5min) |
+| Score Variance | 92% among finalists |
+
+**Key Finding:** Scoring produces meaningful differentiation. Wallet with +$259 PnL scored negative (-0.0842) due to low risk-adjusted returns, while efficient trader with +$1,816 scored highest (+0.1829).
+
+See [Testing Report](./submission/TESTING_REPORT.md) for full methodology and results.
+
+---
+
 ## Documentation
 
 - [Design Document](./submission/ADRENA_ROYALE_Design_Document.md) - Full product specification
 - [Technical Specification](./submission/ADRENA_ROYALE_Technical_Specification.md) - Implementation details
 - [Deployment Guide](./submission/DEPLOYMENT_GUIDE.md) - Local development setup and Render deployment
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run type checks (`npm run type-check`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+- [Testing Report](./submission/TESTING_REPORT.md) - Backtest results and validation
 
 ---
 
@@ -442,8 +455,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Adrena Protocol](https://adrena.xyz) - The underlying trading platform
 - [Superteam](https://superteam.fun) - Bounty program
-- The Solana ecosystem for excellent developer tools
-
+- [Autonom](https://www.autonom.cc/) - RWA pricing on-chain
 ---
 
 **Built with conviction for the Adrena community.**

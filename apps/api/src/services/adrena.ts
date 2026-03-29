@@ -1,6 +1,7 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { PositionData, LiquidityInfo, LiquidityApiResponse, CustodyInfo } from '@adrena-royale/shared';
 import { env, isDevelopment } from '../config/env';
+import { prisma } from '../db/client';
 import {
   generateMockClosedPositions,
   generateMockOpenPositions,
@@ -8,8 +9,8 @@ import {
   generateMockStreak,
 } from './adrena-mock';
 
-// Use mock data in development when API is unavailable
-const USE_MOCK_DATA = isDevelopment;
+// Mock data disabled - Adrena APIs are available
+const USE_MOCK_DATA = false;
 
 // ─────────────────────────────────────────────────────────────────────
 // SOLANA CONNECTION
@@ -198,38 +199,50 @@ export async function getOpenPositionsOnChain(wallet: string): Promise<PositionD
 
 /**
  * Get closed positions within a time range (for round scoring)
- * Uses Data API for historical data, or mock data in development
+ * Queries from persisted WebSocket data in the Trade table
  */
 export async function getClosedPositionsInTimeRange(
   wallet: string,
   startTime: number,
   endTime: number
 ): Promise<PositionData[]> {
-  // Use mock data in development
+  // Use mock data if enabled (for testing only)
   if (USE_MOCK_DATA) {
     console.log(`[MOCK] Generating closed positions for ${wallet}`);
     return generateMockClosedPositions(wallet, startTime, endTime);
   }
 
   try {
-    const response = await fetchDataApi<{ data: ApiPosition[] }>('/positions', {
-      user_wallet: wallet,
-      status: 'CLOSED,LIQUIDATED',
+    // Query from persisted WebSocket data
+    const trades = await prisma.trade.findMany({
+      where: {
+        wallet,
+        closeTime: {
+          gte: new Date(startTime),
+          lte: new Date(endTime),
+        },
+      },
+      orderBy: { closeTime: 'asc' },
     });
 
-    const positions = (response.data || []).map(mapApiPosition);
-
-    // Filter to those closing within our time window
-    return positions.filter(
-      (p) => p.close_time && p.close_time >= startTime && p.close_time <= endTime
-    );
+    // Map to PositionData format
+    return trades.map((trade) => ({
+      wallet: trade.wallet,
+      pool: trade.custody,
+      custody: trade.custody,
+      side: trade.side as 'long' | 'short',
+      size_usd: trade.sizeUsd,
+      collateral_usd: trade.collateralUsd,
+      entry_price: trade.entryPrice,
+      current_price: trade.entryPrice, // Exit price
+      unrealized_profit_usd: trade.profitUsd,
+      unrealized_loss_usd: trade.lossUsd,
+      open_time: 0, // Not available from close event
+      close_time: trade.closeTime.getTime(),
+      pnl: trade.netPnl,
+    }));
   } catch (error) {
     console.error(`Failed to fetch closed positions for ${wallet}:`, error);
-    // Fallback to mock in case of API failure
-    if (isDevelopment) {
-      console.log(`[MOCK FALLBACK] Generating closed positions for ${wallet}`);
-      return generateMockClosedPositions(wallet, startTime, endTime);
-    }
     return [];
   }
 }

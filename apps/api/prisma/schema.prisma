@@ -185,6 +185,53 @@ model RoundScore {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// TRADES (Persisted from Competition Service WebSocket)
+// ═══════════════════════════════════════════════════════════════════════
+
+model Trade {
+  id              String    @id @default(cuid())
+
+  // Position identification
+  positionId      String    // Adrena position ID
+  wallet          String    // Owner wallet
+  signature       String    @unique // Transaction signature (dedup key)
+
+  // Trade details
+  custody         String    // Asset symbol (e.g., "SOL", "BTC")
+  custodyMint     String    // Custody mint address
+  side            String    // "long" or "short"
+
+  // Sizing
+  sizeUsd         Float     // Position size in USD
+  collateralUsd   Float     // Collateral in USD
+  entryPrice      Float     // Entry/exit price
+
+  // PnL
+  profitUsd       Float     @default(0)
+  lossUsd         Float     @default(0)
+  netPnl          Float     // profit - loss
+
+  // Fees
+  borrowFeeUsd    Float     @default(0)
+  exitFeeUsd      Float     @default(0)
+
+  // Timing
+  closeTime       DateTime  // When position was closed
+  percentClosed   Float     @default(100) // Percentage closed (for partials)
+
+  // Raw data
+  slot            String?   // Solana slot
+  rawEvent        Json?     // Full event for debugging
+
+  createdAt       DateTime  @default(now())
+
+  @@index([wallet])
+  @@index([wallet, closeTime])
+  @@index([closeTime])
+  @@index([positionId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // STREAKS (Self-Tracked)
 // ═══════════════════════════════════════════════════════════════════════
 

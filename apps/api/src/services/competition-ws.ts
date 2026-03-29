@@ -10,8 +10,10 @@ import {
   decodePositionFromHex,
   mapDecodedPosition,
   DecodedPosition,
+  parseUsdString,
 } from './adrena';
 import { PositionData } from '@adrena-royale/shared';
+import { prisma } from '../db/client';
 
 // ─────────────────────────────────────────────────────────────────────
 // COMPETITION SERVICE WEBSOCKET CLIENT
@@ -240,6 +242,55 @@ const recentCloseEvents = new Map<string, number>();
 const CLOSE_EVENT_TTL_MS = 60000; // Keep for 1 minute
 
 /**
+ * Persist a close position event to the database
+ * Uses upsert to handle duplicates gracefully
+ */
+async function persistCloseEvent(event: ClosePositionEvent): Promise<void> {
+  const decoded = event.decoded;
+  const signature = event.raw.signature;
+
+  // Skip if already processed recently (in-memory dedup)
+  if (recentCloseEvents.has(signature)) {
+    return;
+  }
+  recentCloseEvents.set(signature, Date.now());
+
+  try {
+    await prisma.trade.upsert({
+      where: { signature },
+      create: {
+        positionId: decoded.positionId,
+        wallet: decoded.owner,
+        signature,
+        custody: decoded.custodyMint.slice(0, 8), // Short symbol, will map later
+        custodyMint: decoded.custodyMint,
+        side: decoded.side.toLowerCase(),
+        sizeUsd: parseUsdString(decoded.sizeUsd),
+        collateralUsd: parseUsdString(decoded.collateralAmountUsd),
+        entryPrice: parseUsdString(decoded.price),
+        profitUsd: parseUsdString(decoded.profitUsd),
+        lossUsd: parseUsdString(decoded.lossUsd),
+        netPnl: parseUsdString(decoded.netPnl),
+        borrowFeeUsd: parseUsdString(decoded.borrowFeeUsd),
+        exitFeeUsd: parseUsdString(decoded.exitFeeUsd),
+        closeTime: new Date(event.timestamp),
+        percentClosed: parseFloat(decoded.percentageClosed) || 100,
+        slot: event.raw.slot,
+        rawEvent: event as unknown as Record<string, unknown>,
+      },
+      update: {}, // No update needed, just skip duplicates
+    });
+
+    console.log(
+      `[CompetitionWS] Persisted trade: ${decoded.owner.slice(0, 8)}... ` +
+        `${decoded.side} ${decoded.sizeUsd} PnL: ${decoded.netPnl}`
+    );
+  } catch (error) {
+    console.error('[CompetitionWS] Failed to persist trade:', error);
+  }
+}
+
+/**
  * Register a callback for position close events
  * Returns an unsubscribe function
  */
@@ -286,11 +337,11 @@ export function initCompetitionWebSocket(): void {
     console.log('[CompetitionWS] Ready to receive position events');
   });
 
+  // Persist all close events to database
   competitionWS.on('closePosition', (event) => {
-    console.log(
-      `[CompetitionWS] Position closed: ${event.decoded.owner.slice(0, 8)}... ` +
-        `${event.decoded.side} ${event.decoded.sizeUsd} PnL: ${event.decoded.netPnl}`
-    );
+    persistCloseEvent(event).catch((err) => {
+      console.error('[CompetitionWS] Error in persistCloseEvent:', err);
+    });
   });
 
   // Cleanup stale events periodically

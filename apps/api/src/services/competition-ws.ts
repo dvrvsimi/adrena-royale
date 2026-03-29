@@ -276,7 +276,7 @@ async function persistCloseEvent(event: ClosePositionEvent): Promise<void> {
         closeTime: new Date(event.timestamp),
         percentClosed: parseFloat(decoded.percentageClosed) || 100,
         slot: event.raw.slot,
-        rawEvent: event as unknown as Record<string, unknown>,
+        rawEvent: JSON.parse(JSON.stringify(event)),
       },
       update: {}, // No update needed, just skip duplicates
     });
